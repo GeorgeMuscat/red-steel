@@ -19,23 +19,38 @@ def print_rows(sheet):
     for row in sheet.iter_rows(values_only=True):
         print(row)
 
+def clear_row(sheet, row):
+    sheet["A" + str(row)] = None
+    sheet["B" + str(row)] = None
+    sheet["C" + str(row)] = None
+    
+def clear_sheet(sheet):
+    idx = 2
+    while True:
+        if sheet["A" + str(idx)].value == None:
+            return
+        clear_row(sheet, idx)
+        idx += 1
+
 # Retrieve all  
 def fill_shs():
     sheet = wb['SHS']
     titles = []
     prices = []
-    retrieve_values(titles, prices, 'https://handysteel.com.au/hollow-section-square-hollow-section-duragal-shs?p=', 1)
-    print(titles)
-    print(prices)
-    if len(titles) != len(prices) raise Exception:
+    lengths = []
+    retrieve_values(titles, prices, lengths, 'https://handysteel.com.au/hollow-section-square-hollow-section-duragal-shs?p=', 1)
 
+    if len(titles) != len(prices) or len(titles) != len(lengths):
+        raise Exception
+    clear_sheet(sheet)
     for cell_num in range(2, len(titles) + 2):
         sheet["A" + str(cell_num)] = titles[cell_num - 2]
         sheet["B" + str(cell_num)] = prices[cell_num - 2]
+        sheet["C" + str(cell_num)] = lengths[cell_num - 2]
     print_rows(sheet)
     wb.save(filename="master.xlsx")
 
-def retrieve_values(titles, prices, page, p_num):
+def retrieve_values(titles, prices, lengths, page, p_num):
     response = urlopen(page + str(p_num))
 
     soup = BeautifulSoup(response.read(), 'html.parser')    
@@ -50,7 +65,11 @@ def retrieve_values(titles, prices, page, p_num):
             t_string = re.findall(r"(?<=title\=\").[^\"]*", str(title))[0]
             titles.append(t_string)
             print(t_string)
-
-    retrieve_values(titles, prices, page, p_num + 1)
+        for length in list_item.find_all('input', {'name': 'max_len'}):
+            value = float(re.findall(r"(?<=value\=\").[^\"]*", str(length))[0])
+            lengths.append(value)
+            print(value)
+    retrieve_values(titles, prices, lengths, page, p_num + 1)
 
 fill_shs()
+
